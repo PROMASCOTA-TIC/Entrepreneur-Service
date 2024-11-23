@@ -38,7 +38,8 @@
       "exclude": [
         "apps/Enterpreneur-Service-e2e/**/*",
         "apps/products-ms-e2e/**/*",
-        "apps/offers-ms-e2e/**/*"
+        "apps/offers-ms-e2e/**/*",
+        "apps/entrepreneur-approval-ms-e2e/**/*"
       ]
     }
   ]

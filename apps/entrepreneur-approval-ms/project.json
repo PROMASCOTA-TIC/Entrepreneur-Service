@@ -1,0 +1,26 @@
+{
+  "name": "entrepreneur-approval-ms",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/entrepreneur-approval-ms/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "serve": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "entrepreneur-approval-ms:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "entrepreneur-approval-ms:build:development"
+        },
+        "production": {
+          "buildTarget": "entrepreneur-approval-ms:build:production"
+        }
+      }
+    }
+  }
+}
