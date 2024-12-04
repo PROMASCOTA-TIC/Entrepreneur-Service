@@ -1,9 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
 @Injectable()
-export class ProductsService {
+export class ProductsService implements OnModuleInit {
+  constructor() {
+    @Injectable()
+    private 
+  } {
+    
+  }
+
+
   create(createProductDto: CreateProductDto) {
     return 'This action adds a new product';
   }
