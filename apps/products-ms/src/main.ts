@@ -8,15 +8,16 @@ import { MicroserviceOptions,Transport } from '@nestjs/microservices';
 
 
 async function bootstrap() {
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    AppModule,
-    {
-      transport: Transport.NATS,
-      options: {
-        servers: envs.natsServers,
-      },
-    }
-  );
+  const app = await NestFactory.create(AppModule);
+  // const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+  //   AppModule,
+  //   {
+  //     transport: Transport.NATS,
+  //     options: {
+  //       servers: envs.natsServers,
+  //     },
+  //   }
+  // );
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -24,6 +25,8 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     })
   );
+
+  app.listen(3000);
 
   Logger.log(`Products Microservice is running`,'ProductMicroservice');
 }

@@ -105,6 +105,7 @@ export class Product extends Model {
         type: DataType.DATE,
         allowNull: false,
         field: 'CREATED_AT',
+        defaultValue: DataType.NOW,
     })
     createdAt: Date;
 
