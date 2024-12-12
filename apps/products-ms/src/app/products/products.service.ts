@@ -29,7 +29,6 @@ export class ProductsService implements OnModuleInit {
    */
   async create(createProductDto: CreateProductDto): Promise<Product> {
     try {
-      // Convertimos el DTO explícitamente al objeto compatible con el modelo
       const product = await this.productModel.create({
         ...createProductDto,
       });
@@ -68,7 +67,7 @@ export class ProductsService implements OnModuleInit {
    * Obtiene un producto por su ID.
    * @param id - ID del producto.
    * @returns El producto encontrado.
-   * @throws NotFoundException si el producto no existe.
+   * @throws 
    */
   async findOne(id: string): Promise<Product> {
     try {
@@ -84,24 +83,29 @@ export class ProductsService implements OnModuleInit {
     }
   }
 
-  /**
+ /**
    * Actualiza un producto por su ID.
    * @param id - ID del producto.
    * @param updateProductDto - Datos para actualizar el producto.
    * @returns El producto actualizado.
    * @throws NotFoundException si el producto no existe.
    */
-  async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
-    try {
-      const product = await this.findOne(id);
-      await product.update({ ...updateProductDto });
-      this.logger.log(`Product updated: ${id}`);
-      return product;
-    } catch (error) {
-      this.logger.error(`Error updating product with ID ${id}:`, error.message);
-      throw error;
-    }
+ async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
+  try {
+    const product = await this.findOne(id);
+    await product.update({
+      ...updateProductDto,
+      updatedAt: new Date(), 
+    });
+
+    this.logger.log(`Product updated: ${id}`);
+    return product;
+  } catch (error) {
+    this.logger.error(`Error updating product with ID ${id}:`, error.message);
+    throw error;
   }
+}
+
 
 /**
  * Elimina un producto por su ID de forma lógica (soft delete).
@@ -111,12 +115,10 @@ export class ProductsService implements OnModuleInit {
  */
 async remove(id: string): Promise<void> {
   try {
-    const product = await this.findOne(id); // Buscar el producto por ID
+    const product = await this.findOne(id); 
     if (!product) {
       throw new HttpException('Product not found', HttpStatus.NOT_FOUND);
     }
-
-    // Realizar un soft delete actualizando la columna deletedAt
     await product.update({ deletedAt: new Date() });
     this.logger.log(`Product logically deleted: ${id}`);
   } catch (error) {
