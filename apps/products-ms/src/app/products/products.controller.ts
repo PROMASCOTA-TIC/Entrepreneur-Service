@@ -8,6 +8,8 @@ import {
   Body,
   HttpException,
   HttpStatus,
+  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ProductsService } from './products.service';
@@ -112,15 +114,33 @@ export class ProductsController {
    * @returns El producto encontrado.
    */
   @MessagePattern('get_product_by_id')
-  async findOneViaMessage(@Payload() id: string) {
-    console.log('Mensaje recibido en get_product_by_id:', id);
+  async findOneViaMessage(@Payload() payload: string | { id: string }) {
+    let id: string;
+  
+    // Verificar si el payload es un string o un objeto
+    if (typeof payload === 'string') {
+      id = payload; // Payload como string
+    } else if (payload && payload.id) {
+      id = payload.id; // Payload como objeto
+    } else {
+      console.error('Payload inválido en get_product_by_id:', payload);
+      throw new BadRequestException('El payload debe contener un campo "id" o ser un string.');
+    }
+  
+    console.log('Mensaje recibido en get_product_by_id con ID:', id);
+  
     try {
-      return await this.productsService.findOne(id);
+      const product = await this.productsService.findOne(id);
+      if (!product) {
+        throw new NotFoundException(`Producto con ID ${id} no encontrado.`);
+      }
+      return product;
     } catch (error) {
-      console.error('Error al obtener producto vía NATS:', error.message);
-      throw new Error('Error retrieving product via NATS: ' + error.message);
+      console.error(`Error al obtener producto con ID ${id}:`, error.message);
+      throw new BadRequestException(`Error fetching product: ${error.message}`);
     }
   }
+  
 
   /**
    * Endpoint para actualizar un producto por ID (HTTP).
@@ -159,6 +179,23 @@ export class ProductsController {
       throw new Error('Error updating product via NATS: ' + error.message);
     }
   }
+
+/* 
+update precios para utilizar en el micro de ofertas
+*/
+@MessagePattern('update_product_price')
+async updateProductPrice(@Payload() data: { id: string; price: number }) {
+  const { id, price } = data;
+
+  const product = await this.productsService.findOne(id);
+  if (!product) {
+    throw new NotFoundException(`Producto con ID ${id} no encontrado.`);
+  }
+
+  await product.update({ finalPrice: price });
+  return { message: 'Precio actualizado correctamente.' };
+}
+
 
   /**
    * Endpoint para eliminar un producto por ID (HTTP).
