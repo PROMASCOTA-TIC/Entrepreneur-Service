@@ -54,4 +54,8 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
   @IsString()
   @IsOptional()
   multimediaFiles?: string;
+
+  @IsString({ message: 'El nombre del producto debe ser una cadena válida.' })
+  @IsOptional()
+  name?: string; // Campo opcional para actualizar el nombre del producto
 }

@@ -10,6 +10,7 @@ import {
   HttpStatus,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ProductsService } from './products.service';
@@ -19,6 +20,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
+  private readonly logger = new Logger(ProductsController.name);
 
   /**
    * Endpoint para crear un nuevo producto (HTTP).
@@ -27,13 +29,13 @@ export class ProductsController {
    */
   @Post()
   async create(@Body() createProductDto: CreateProductDto) {
-    console.log('Solicitud recibida en POST /products:', createProductDto); 
+    console.log('Solicitud recibida en POST /products:', createProductDto);
     try {
       const product = await this.productsService.create(createProductDto);
-      console.log('Producto creado:', product); 
+      console.log('Producto creado:', product);
       return product;
     } catch (error) {
-      console.error('Error al crear el producto:', error.message); 
+      console.error('Error al crear el producto:', error.message);
       throw new HttpException(
         'Error creating product: ' + error.message,
         HttpStatus.BAD_REQUEST,
@@ -48,7 +50,7 @@ export class ProductsController {
    */
   @MessagePattern('create_product')
   async createViaMessage(@Payload() createProductDto: CreateProductDto) {
-    console.log('Mensaje recibido en create_product:', createProductDto); // Log para depuración
+    console.log('Mensaje recibido en create_product:', createProductDto);
     try {
       const product = await this.productsService.create(createProductDto);
       console.log('Producto creado vía NATS:', product);
@@ -116,7 +118,7 @@ export class ProductsController {
   @MessagePattern('get_product_by_id')
   async findOneViaMessage(@Payload() payload: string | { id: string }) {
     let id: string;
-  
+
     // Verificar si el payload es un string o un objeto
     if (typeof payload === 'string') {
       id = payload; // Payload como string
@@ -124,11 +126,13 @@ export class ProductsController {
       id = payload.id; // Payload como objeto
     } else {
       console.error('Payload inválido en get_product_by_id:', payload);
-      throw new BadRequestException('El payload debe contener un campo "id" o ser un string.');
+      throw new BadRequestException(
+        'El payload debe contener un campo "id" o ser un string.',
+      );
     }
-  
+
     console.log('Mensaje recibido en get_product_by_id con ID:', id);
-  
+
     try {
       const product = await this.productsService.findOne(id);
       if (!product) {
@@ -140,7 +144,6 @@ export class ProductsController {
       throw new BadRequestException(`Error fetching product: ${error.message}`);
     }
   }
-  
 
   /**
    * Endpoint para actualizar un producto por ID (HTTP).
@@ -180,23 +183,6 @@ export class ProductsController {
     }
   }
 
-/* 
-update precios para utilizar en el micro de ofertas
-*/
-@MessagePattern('update_product_price')
-async updateProductPrice(@Payload() data: { id: string; price: number }) {
-  const { id, price } = data;
-
-  const product = await this.productsService.findOne(id);
-  if (!product) {
-    throw new NotFoundException(`Producto con ID ${id} no encontrado.`);
-  }
-
-  await product.update({ finalPrice: price });
-  return { message: 'Precio actualizado correctamente.' };
-}
-
-
   /**
    * Endpoint para eliminar un producto por ID (HTTP).
    * @param id - ID del producto.
@@ -221,14 +207,41 @@ async updateProductPrice(@Payload() data: { id: string; price: number }) {
    * @returns Una confirmación de eliminación.
    */
   @MessagePattern('delete_product')
-  async removeViaMessage(@Payload() id: string) {
-    console.log('Mensaje recibido en delete_product:', id);
+  async removeViaMessage(@Payload() payload: string | { id: string }) {
+    let id: string;
+  
+    // Verificar si el payload es un string o un objeto
+    if (typeof payload === 'string') {
+      id = payload; // Payload como string
+    } else if (payload && payload.id) {
+      id = payload.id; // Payload como objeto
+    } else {
+      console.error('Payload inválido en delete_product:', payload);
+      throw new BadRequestException('El payload debe contener un campo "id" o ser un string.');
+    }
+  
+    console.log('Mensaje recibido en delete_product con ID:', id);
     try {
       await this.productsService.remove(id);
-      return { message: `Product with ID ${id} has been deleted.` };
+      return { message: `Producto con ID ${id} eliminado correctamente.` };
     } catch (error) {
       console.error('Error al eliminar producto vía NATS:', error.message);
       throw new Error('Error deleting product via NATS: ' + error.message);
     }
   }
+  
+  @MessagePattern('update_product_price')
+async updateProductPrice(@Payload() data: { id: string; price: number }) {
+  const { id, price } = data;
+
+  const product = await this.productsService.findOne(id);
+  if (!product) {
+    throw new NotFoundException(`Producto con ID ${id} no encontrado.`);
+  }
+
+  await product.update({ finalPrice: price });
+  this.logger.log(`Updating product price for ID: ${id}, new price: ${price}`);
+  return { message: 'Precio actualizado correctamente.' };
+}
+
 }

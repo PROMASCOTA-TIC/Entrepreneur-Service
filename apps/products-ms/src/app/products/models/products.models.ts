@@ -4,7 +4,6 @@ import { Category } from "./category.models";
 import { Subcategory } from "./subcategory.models";
 import { Size } from "./size.models";
 
-
 @Table({ tableName: 'PRODUCTS', timestamps: false })
 export class Product extends Model {
     @Column({
@@ -65,6 +64,13 @@ export class Product extends Model {
 
     @BelongsTo(() => Size)
     size?: Size;
+
+    @Column({
+        type: DataType.STRING(255), // Nombre del producto
+        allowNull: false,
+        field: 'NAME',
+    })
+    name: string;
 
     @Column({
         type: DataType.DECIMAL(10, 2),
