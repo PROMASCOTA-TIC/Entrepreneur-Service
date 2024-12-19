@@ -7,10 +7,10 @@ import { Offer } from './models/offer.model';
 
 @Module({
   imports: [
-    SequelizeModule.forFeature([Offer]), // Modelo Sequelize registrado
+    SequelizeModule.forFeature([Offer]), 
     ClientsModule.register([
       {
-        name: 'PRODUCTS_SERVICE', // Nombre del cliente NATS
+        name: 'PRODUCTS_SERVICE', 
         transport: Transport.NATS,
         options: {
           servers: ['nats://localhost:4222'], // URL de NATS

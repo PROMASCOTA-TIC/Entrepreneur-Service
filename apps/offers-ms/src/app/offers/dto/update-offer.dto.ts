@@ -2,11 +2,11 @@ import { IsOptional, IsDateString, IsNumber, Min } from 'class-validator';
 
 export class UpdateOfferDto {
   @IsOptional()
-  @IsDateString({}, { message: 'La fecha de inicio debe ser una fecha válida.' })
+  @IsDateString({}, { message: 'La fecha de inicio debe ser una fecha válida en formato ISO 8601.' })
   startDate?: string;
 
   @IsOptional()
-  @IsDateString({}, { message: 'La fecha de fin debe ser una fecha válida.' })
+  @IsDateString({}, { message: 'La fecha de fin debe ser una fecha válida en formato ISO 8601.' })
   endDate?: string;
 
   @IsOptional()

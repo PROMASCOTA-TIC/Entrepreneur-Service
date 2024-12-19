@@ -1,31 +1,30 @@
 import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
-
 import { Dialect } from 'sequelize';
 import { envs } from '../config/env';
 import { OffersModule } from './offers/offers.module';
-import { Offer } from './offers/models/offer.model';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     OffersModule,
+    ScheduleModule.forRoot(),
     SequelizeModule.forRoot({
       dialect: envs.dbDialect as Dialect,
       logging: console.log,
       username: envs.dbOffersUsername,
       password: envs.dbOffersPassword,
-      synchronize: true,
+      synchronize: true, // Cuidado: no recomendado en producción
       autoLoadModels: true,
       dialectOptions: {
         connectString: envs.connectionString,
       },
-      models: [Offer],
+     
     }),
-    SequelizeModule.forFeature([Offer]),
   ],
   controllers: [],
-  providers: [],
+  providers: [OffersModule],
 })
-
 export class AppModule {}
-console.log(envs);
+
+console.log(envs); // Verifica las variables de entorno

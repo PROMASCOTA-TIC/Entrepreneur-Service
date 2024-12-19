@@ -18,6 +18,12 @@ export class Offer extends Model {
   productId: string;
 
   @Column({
+    type: DataType.STRING(255), 
+    field: 'PRODUCT_NAME',
+  })
+  productName: string;
+
+  @Column({
     type: DataType.DECIMAL(10, 2),
     allowNull: false,
     field: 'ORIGINAL_PRICE',
@@ -39,18 +45,18 @@ export class Offer extends Model {
   discountPercentage: number;
 
   @Column({
-    type: DataType.DATE,
+    type: DataType.STRING,
     allowNull: false,
     field: 'START_DATE',
   })
-  startDate: Date;
+  startDate: string;
 
   @Column({
-    type: DataType.DATE,
+    type: DataType.STRING,
     allowNull: false,
     field: 'END_DATE',
   })
-  endDate: Date;
+  endDate: string;
 
   @Column({
     type: DataType.DATE,
