@@ -10,7 +10,7 @@ export class Product extends Model {
         type: DataType.STRING(36), // ID único del producto
         primaryKey: true,
         allowNull: false,
-        field: 'ID',
+        defaultValue: DataType.UUIDV4,
     })
     id: string;
 

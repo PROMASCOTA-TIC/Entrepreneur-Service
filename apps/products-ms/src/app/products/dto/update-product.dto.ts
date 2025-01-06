@@ -4,28 +4,25 @@ import { Type } from 'class-transformer';
 import { CreateProductDto } from './create-product.dto';
 
 export class UpdateProductDto extends PartialType(CreateProductDto) {
-  @IsUUID('4', { message: 'El ID debe ser un UUID válido.' })
-  @IsOptional()
-  id?: string;
-
+ 
   @IsString()
   @IsIn(['0', '1'], { message: 'El tipo de publicación debe ser "0" (servicio) o "1" (producto).' })
   @IsOptional()
   publicationType?: string;
 
-  @IsUUID('4', { message: 'El ID de tipo de mascota debe ser un UUID válido.' })
+  @IsString()
   @IsOptional()
   petTypeId?: string;
 
-  @IsUUID('4', { message: 'El ID de categoría debe ser un UUID válido.' })
+  @IsString()
   @IsOptional()
   categoryId?: string;
 
-  @IsUUID('4', { message: 'El ID de subcategoría debe ser un UUID válido.' })
+  @IsString()
   @IsOptional()
   subcategoryId?: string;
 
-  @IsString({ message: 'El ID de tamaño debe ser una cadena válida.' })
+  @IsString()
   @IsOptional()
   sizeId?: string;
 
@@ -57,5 +54,5 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
 
   @IsString({ message: 'El nombre del producto debe ser una cadena válida.' })
   @IsOptional()
-  name?: string; // Campo opcional para actualizar el nombre del producto
+  name?: string; 
 }
