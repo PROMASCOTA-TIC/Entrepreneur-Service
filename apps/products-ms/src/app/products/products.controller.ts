@@ -8,6 +8,9 @@ import {
   Body,
   HttpException,
   HttpStatus,
+  NotFoundException,
+  BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ProductsService } from './products.service';
@@ -17,36 +20,12 @@ import { UpdateProductDto } from './dto/update-product.dto';
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
+  private readonly logger = new Logger(ProductsController.name);
 
-  /**
-   * Endpoint para crear un nuevo producto (HTTP).
-   * @param createProductDto - Datos para crear el producto.
-   * @returns El producto creado.
-   */
-  @Post()
-  async create(@Body() createProductDto: CreateProductDto) {
-    console.log('Solicitud recibida en POST /products:', createProductDto); 
-    try {
-      const product = await this.productsService.create(createProductDto);
-      console.log('Producto creado:', product); 
-      return product;
-    } catch (error) {
-      console.error('Error al crear el producto:', error.message); 
-      throw new HttpException(
-        'Error creating product: ' + error.message,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
-
-  /**
-   * Listener para crear un producto a través de NATS.
-   * @param createProductDto - Datos del producto desde el mensaje NATS.
-   * @returns El producto creado.
-   */
+ //Endpoint para crear productos.
   @MessagePattern('create_product')
   async createViaMessage(@Payload() createProductDto: CreateProductDto) {
-    console.log('Mensaje recibido en create_product:', createProductDto); // Log para depuración
+    console.log('Mensaje recibido en create_product:', createProductDto);
     try {
       const product = await this.productsService.create(createProductDto);
       console.log('Producto creado vía NATS:', product);
@@ -57,27 +36,8 @@ export class ProductsController {
     }
   }
 
-  /**
-   * Endpoint para obtener todos los productos (HTTP).
-   * @returns Lista de productos.
-   */
-  @Get()
-  async findAll() {
-    try {
-      console.log('Getting all products');
-      return await this.productsService.findAll();
-    } catch (error) {
-      throw new HttpException(
-        'Error retrieving products: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
+// Endpoint para obtener todos los productos.
 
-  /**
-   * Listener para obtener todos los productos a través de NATS.
-   * @returns Lista de productos.
-   */
   @MessagePattern('get_all_products')
   async findAllViaMessage() {
     console.log('Mensaje recibido en get_all_products');
@@ -89,65 +49,40 @@ export class ProductsController {
     }
   }
 
-  /**
-   * Endpoint para obtener un producto por ID (HTTP).
-   * @param id - ID del producto.
-   * @returns El producto encontrado.
-   */
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    try {
-      return await this.productsService.findOne(id);
-    } catch (error) {
-      throw new HttpException(
-        'Error retrieving product: ' + error.message,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-  }
 
-  /**
-   * Listener para obtener un producto por ID a través de NATS.
-   * @param id - ID del producto desde el mensaje NATS.
-   * @returns El producto encontrado.
-   */
+// Endpoint para obtener un producto por ID.
+
   @MessagePattern('get_product_by_id')
-  async findOneViaMessage(@Payload() id: string) {
-    console.log('Mensaje recibido en get_product_by_id:', id);
-    try {
-      return await this.productsService.findOne(id);
-    } catch (error) {
-      console.error('Error al obtener producto vía NATS:', error.message);
-      throw new Error('Error retrieving product via NATS: ' + error.message);
-    }
-  }
+  async findOneViaMessage(@Payload() payload: string | { id: string }) {
+    let id: string;
 
-  /**
-   * Endpoint para actualizar un producto por ID (HTTP).
-   * @param id - ID del producto.
-   * @param updateProductDto - Datos para actualizar el producto.
-   * @returns El producto actualizado.
-   */
-  @Patch(':id')
-  async update(
-    @Param('id') id: string,
-    @Body() updateProductDto: UpdateProductDto,
-  ) {
-    try {
-      return await this.productsService.update(id, updateProductDto);
-    } catch (error) {
-      throw new HttpException(
-        'Error updating product: ' + error.message,
-        HttpStatus.BAD_REQUEST,
+    if (typeof payload === 'string') {
+      id = payload; 
+    } else if (payload && payload.id) {
+      id = payload.id; 
+    } else {
+      console.error('Payload inválido en get_product_by_id:', payload);
+      throw new BadRequestException(
+        'El payload debe contener un campo "id" o ser un string.',
       );
     }
+
+    console.log('Mensaje recibido en get_product_by_id con ID:', id);
+
+    try {
+      const product = await this.productsService.findOne(id);
+      if (!product) {
+        throw new NotFoundException(`Producto con ID ${id} no encontrado.`);
+      }
+      return product;
+    } catch (error) {
+      console.error(`Error al obtener producto con ID ${id}:`, error.message);
+      throw new BadRequestException(`Error fetching product: ${error.message}`);
+    }
   }
 
-  /**
-   * Listener para actualizar un producto por ID a través de NATS.
-   * @param payload - Contiene el ID y los datos de actualización.
-   * @returns El producto actualizado.
-   */
+
+// Endpoint para actualizar un producto por ID.
   @MessagePattern('update_product')
   async updateViaMessage(@Payload() payload: { id: string; dto: UpdateProductDto }) {
     const { id, dto } = payload;
@@ -160,38 +95,59 @@ export class ProductsController {
     }
   }
 
-  /**
-   * Endpoint para eliminar un producto por ID (HTTP).
-   * @param id - ID del producto.
-   * @returns Una confirmación de eliminación.
-   */
-  @Delete(':id')
-  async remove(@Param('id') id: string) {
-    try {
-      await this.productsService.remove(id);
-      return { message: `Product with ID ${id} has been deleted.` };
-    } catch (error) {
-      throw new HttpException(
-        'Error deleting product: ' + error.message,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
+// Endpoint para eliminar un producto por ID.
 
-  /**
-   * Listener para eliminar un producto por ID a través de NATS.
-   * @param id - ID del producto desde el mensaje NATS.
-   * @returns Una confirmación de eliminación.
-   */
   @MessagePattern('delete_product')
-  async removeViaMessage(@Payload() id: string) {
-    console.log('Mensaje recibido en delete_product:', id);
+  async removeViaMessage(@Payload() payload: string | { id: string }) {
+    let id: string;
+      if (typeof payload === 'string') {
+      id = payload; 
+    } else if (payload && payload.id) {
+      id = payload.id; 
+    } else {
+      console.error('Payload inválido en delete_product:', payload);
+      throw new BadRequestException('El payload debe contener un campo "id" o ser un string.');
+    }
+    console.log('Mensaje recibido en delete_product con ID:', id);
     try {
       await this.productsService.remove(id);
-      return { message: `Product with ID ${id} has been deleted.` };
+      return { message: `Producto con ID ${id} eliminado correctamente.` };
     } catch (error) {
       console.error('Error al eliminar producto vía NATS:', error.message);
       throw new Error('Error deleting product via NATS: ' + error.message);
     }
   }
+  
+  // Endpoint para actualizar el precio de un producto por ID.
+  @MessagePattern('update_product_price')
+async updateProductPrice(@Payload() data: { id: string; price: number }) {
+  const { id, price } = data;
+
+  const product = await this.productsService.findOne(id);
+  if (!product) {
+    throw new NotFoundException(`Producto con ID ${id} no encontrado.`);
+  }
+
+  await product.update({ finalPrice: price });
+  this.logger.log(`Updating product price for ID: ${id}, new price: ${price}`);
+  return { message: 'Precio actualizado correctamente.' };
+}
+
+// Endpoint para obtener productos por ID de emprendedor.
+@MessagePattern('get_products_by_entrepreneur')
+async findAllByEntrepreneur(@Payload() entrepreneurId: string) {
+  this.logger.log(`Mensaje recibido para obtener productos del emprendedor con ID: ${entrepreneurId}`);
+  try {
+    return await this.productsService.findAllByEntrepreneur(entrepreneurId);
+  } catch (error) {
+    this.logger.error(`Error al obtener productos del emprendedor con ID ${entrepreneurId}: ${error.message}`);
+    throw new HttpException(
+      `Error al obtener productos: ${error.message}`,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
+
+
 }

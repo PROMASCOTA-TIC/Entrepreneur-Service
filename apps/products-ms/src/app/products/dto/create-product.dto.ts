@@ -2,20 +2,21 @@ import { Type } from "class-transformer";
 import { IsUUID, IsString, IsNumber, Min, IsOptional, IsIn } from "class-validator";
 
 export class CreateProductDto {
-  @IsUUID('4', { message: 'El ID debe ser un UUID válido.' })
-  id: string;
+
+  @IsUUID('4', { message: 'El ID del emprendedor debe ser un UUID válido.' })
+  entrepreneurId: string;
 
   @IsString()
   @IsIn(['0', '1'], { message: 'El tipo de publicación debe ser "0" (servicio) o "1" (producto).' })
   publicationType: string;
 
-  @IsUUID('4', { message: 'El ID de tipo de mascota debe ser un UUID válido.' })
+  @IsString()
   petTypeId: string;
 
-  @IsUUID('4', { message: 'El ID de categoría debe ser un UUID válido.' })
+  @IsString()
   categoryId: string;
 
-  @IsUUID('4', { message: 'El ID de subcategoría debe ser un UUID válido.' })
+  @IsString()
   subcategoryId: string;
 
   @IsString({ message: 'El ID de tamaño debe ser una cadena válida.' })
@@ -37,6 +38,9 @@ export class CreateProductDto {
   @Min(0, { message: 'El stock no puede ser negativo.' })
   @Type(() => Number)
   stock: number;
+
+  @IsString({ message: 'El nombre del producto debe ser una cadena válida.' })
+  name: string; 
 
   @IsString()
   description: string;

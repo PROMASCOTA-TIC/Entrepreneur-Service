@@ -4,16 +4,23 @@ import { Category } from "./category.models";
 import { Subcategory } from "./subcategory.models";
 import { Size } from "./size.models";
 
-
 @Table({ tableName: 'PRODUCTS', timestamps: false })
 export class Product extends Model {
     @Column({
         type: DataType.STRING(36), // ID único del producto
         primaryKey: true,
         allowNull: false,
-        field: 'ID',
+        defaultValue: DataType.UUIDV4,
     })
     id: string;
+
+    @Column({
+        type: DataType.STRING(36),
+        allowNull: false, 
+        field: 'ENTREPRENEUR_ID',
+      })
+      entrepreneurId: string;
+
 
     @Column({
         type: DataType.CHAR(1), // '0' para Servicio, '1' para Producto
@@ -65,6 +72,13 @@ export class Product extends Model {
 
     @BelongsTo(() => Size)
     size?: Size;
+
+    @Column({
+        type: DataType.STRING(255), // Nombre del producto
+        allowNull: false,
+        field: 'NAME',
+    })
+    name: string;
 
     @Column({
         type: DataType.DECIMAL(10, 2),

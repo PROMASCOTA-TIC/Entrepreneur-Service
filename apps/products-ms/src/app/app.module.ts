@@ -26,7 +26,7 @@ import { Subcategory } from './products/models/subcategory.models';
     SequelizeModule.forFeature([Product, PetType, Category, Subcategory, Size]),
   ],
   controllers: [],
-  providers: [],
+  providers: [ProductsModule],
 })
 
 export class AppModule {}
