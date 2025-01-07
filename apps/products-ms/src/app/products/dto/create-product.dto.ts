@@ -3,6 +3,9 @@ import { IsUUID, IsString, IsNumber, Min, IsOptional, IsIn } from "class-validat
 
 export class CreateProductDto {
 
+  @IsUUID('4', { message: 'El ID del emprendedor debe ser un UUID válido.' })
+  entrepreneurId: string;
+
   @IsString()
   @IsIn(['0', '1'], { message: 'El tipo de publicación debe ser "0" (servicio) o "1" (producto).' })
   publicationType: string;

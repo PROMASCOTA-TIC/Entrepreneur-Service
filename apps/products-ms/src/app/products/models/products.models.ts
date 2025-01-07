@@ -15,6 +15,14 @@ export class Product extends Model {
     id: string;
 
     @Column({
+        type: DataType.STRING(36),
+        allowNull: false, 
+        field: 'ENTREPRENEUR_ID',
+      })
+      entrepreneurId: string;
+
+
+    @Column({
         type: DataType.CHAR(1), // '0' para Servicio, '1' para Producto
         allowNull: false,
         field: 'PUBLICATION_TYPE',

@@ -1,6 +1,8 @@
 import {
+  BadRequestException,
   HttpException,
   HttpStatus,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -10,12 +12,17 @@ import { Product } from './models/products.models';
 import { InjectModel } from '@nestjs/sequelize';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { lastValueFrom } from 'rxjs';
+import { ClientProxy } from '@nestjs/microservices';
+
+
 
 @Injectable()
 export class ProductsService implements OnModuleInit {
   constructor(
     @InjectModel(Product)
-    private productModel: typeof Product,
+    private readonly productModel: typeof Product,
+    @Inject('USER_SERVICE') private readonly  client: ClientProxy,
   ) {}
   private readonly logger = new Logger('ProductsService');
 
@@ -28,18 +35,33 @@ export class ProductsService implements OnModuleInit {
       this.logger.error('Unable to connect to the database:', error.message);
     }
   }
-
-  /**
-   * Crea un nuevo producto.
-   * @param createProductDto - Datos para crear el producto.
-   * @returns El producto creado.
-   */
+  async validateEntrepreneur(entrepreneurId: string): Promise<void> {
+    try {
+      this.logger.log(`Validando emprendedor con ID: ${entrepreneurId} usando NATS vía API Gateway`);
+  
+      const entrepreneur = await lastValueFrom(
+        this.client.send({ cmd: 'get_entrepreneur_by_id' }, entrepreneurId),
+      );
+  
+      if (!entrepreneur) {
+        throw new Error(`El emprendedor con ID ${entrepreneurId} no existe.`);
+      }
+  
+      this.logger.log(`Emprendedor validado correctamente con ID: ${entrepreneurId}`);
+    } catch (error) {
+      this.logger.error(`Error validando emprendedor con ID ${entrepreneurId}: ${error.message}`);
+      throw new BadRequestException(`Error validando emprendedor: ${error.message}`);
+    }
+  }
+  
+  
   async create(createProductDto: CreateProductDto): Promise<Product> {
     try {
+      await this.validateEntrepreneur(createProductDto.entrepreneurId);
       const product = await this.productModel.create({
         ...createProductDto,
       });
-
+  
       this.logger.log(`Product created: ${product.id}`);
       return product;
     } catch (error) {
@@ -48,18 +70,14 @@ export class ProductsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Obtiene todos los productos.
-   * @returns Una lista de productos.
-   */
   async findAll(): Promise<Product[]> {
     try {
       const products = await this.productModel.findAll({
         where: {
           deletedAt: null,
         },
-        attributes: ['id', 'name', 'finalPrice', 'description', 'stock'], // Asegúrate de incluir los atributos necesarios
-        include: { all: true }, // Incluir relaciones
+        attributes: ['id', 'entrepreneurId','name', 'finalPrice', 'description', 'stock'], 
+        include: { all: true }, 
       });
 
       this.logger.log(`Retrieved ${products.length} products.`);
@@ -70,16 +88,35 @@ export class ProductsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Obtiene un producto por su ID.
-   * @param id - ID del producto.
-   * @returns El producto encontrado.
-   * @throws NotFoundException si no se encuentra.
-   */
+
+  async findAllByEntrepreneur(entrepreneurId: string): Promise<Product[]> {
+    try {
+      await this.validateEntrepreneur(entrepreneurId);
+      const products = await this.productModel.findAll({
+        where: {
+          entrepreneurId,
+          deletedAt: null, 
+        },
+      });
+  
+      if (products.length === 0) {
+        this.logger.warn(`No se encontraron productos para el emprendedor con ID ${entrepreneurId}`);
+      } else {
+        this.logger.log(`Se encontraron ${products.length} productos para el emprendedor con ID ${entrepreneurId}`);
+      }
+  
+      return products;
+    } catch (error) {
+      this.logger.error(`Error al obtener productos para el emprendedor con ID ${entrepreneurId}:`, error.message);
+      throw new BadRequestException(`Error al obtener productos: ${error.message}`);
+    }
+  }
+  
+
   async findOne(id: string): Promise<Product> {
     try {
       const product = await this.productModel.findByPk(id, {
-        attributes: ['id', 'name', 'finalPrice', 'description', 'stock'], // Asegúrate de incluir el nombre
+        attributes: ['id','entrepreneurId', 'name', 'finalPrice', 'description', 'stock'], 
         include: { all: true },
       });
 
@@ -94,13 +131,6 @@ export class ProductsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Actualiza un producto por su ID.
-   * @param id - ID del producto.
-   * @param updateProductDto - Datos para actualizar el producto.
-   * @returns El producto actualizado.
-   * @throws NotFoundException si el producto no existe.
-   */
   async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
     try {
       const product = await this.findOne(id);
@@ -118,12 +148,6 @@ export class ProductsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Elimina un producto por su ID de forma lógica (soft delete).
-   * @param id - ID del producto.
-   * @returns Una confirmación de eliminación.
-   * @throws NotFoundException si el producto no existe.
-   */
   async remove(id: string): Promise<void> {
     try {
       const product = await this.findOne(id);
