@@ -115,6 +115,7 @@ export class OffersService implements OnModuleInit {
       discountPercentage,
       startDate,
       endDate,
+      status:'PENDING'
     });
     this.logger.log(`Offer created with ID: ${offer.id}`);
     return offer; 
@@ -132,6 +133,7 @@ export class OffersService implements OnModuleInit {
     const offersToActivate = await this.offerModel.findAll({
       where: {
         startDate: { [Op.lte]: now }, // Fecha de inicio menor o igual a la actual
+        status: 'PENDING',
         deletedAt: null, 
       },
     });
@@ -157,7 +159,7 @@ export class OffersService implements OnModuleInit {
             price: offer.discountedPrice,
           }),
         );
-  
+        await offer.update({ status: 'ACTIVE' });
         this.logger.log(`Offer ID: ${offer.id} activated successfully.`);
         activatedOffers.push(offer);
       } catch (error) {
@@ -187,6 +189,7 @@ export class OffersService implements OnModuleInit {
       where: {
         endDate: { [Op.lte]: now }, 
         deletedAt: null,
+        status: 'ACTIVE'
       },
     });
   
@@ -212,6 +215,7 @@ export class OffersService implements OnModuleInit {
   
         // Actualizar la oferta como finalizada (borrado lógico)
         await offer.update({ deletedAt: new Date().toISOString() });
+        await offer.update({status:'FINISHED'})
   
         finalizedOffers.push(offer);
         this.logger.log(`Offer ID ${offer.id} finalized successfully.`);
@@ -261,8 +265,16 @@ async findOne(id: string): Promise<Offer> {
 
 async update(id: string, updateOfferDto: UpdateOfferDto): Promise<Offer> {
   const offer = await this.findOne(id);
-
+  if(offer.status === 'ACTIVE'){
+    await firstValueFrom(
+      this.client.send('update_product_price',{
+        id: offer.productId,
+        price: offer.originalPrice,
+      }),
+    );
+  }
   const { startDate, endDate, discountPercentage } = updateOfferDto;
+
 
   if (startDate && startDate <= new Date().toISOString()) {
     throw new BadRequestException(
@@ -305,9 +317,15 @@ async update(id: string, updateOfferDto: UpdateOfferDto): Promise<Offer> {
 
 async remove(id: string): Promise<{ message: string; id: string }> {
   const offer = await this.findOne(id);
-
-  await offer.update({ deletedAt: new Date().toISOString() });
-
+  if (offer.status === 'ACTIVE') {
+    await firstValueFrom(
+      this.client.send('update_product_price', {
+        id: offer.productId,
+        price: offer.originalPrice,
+      }),
+    );
+  }
+  await offer.update({ status:'DELETED', deletedAt: new Date().toISOString() });
   return { message: 'Oferta eliminada correctamente.', id };
 }
 
