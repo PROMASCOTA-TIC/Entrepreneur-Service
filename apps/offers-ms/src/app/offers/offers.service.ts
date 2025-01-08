@@ -35,9 +35,7 @@ export class OffersService implements OnModuleInit {
     }
   }
 
-  /**
- * Crea una nueva oferta.
- */
+  // Metodo para crear una oferta
   async create(createOfferDto: CreateOfferDto): Promise<Offer> {
     this.logger.log(`Creating offer with productId: ${createOfferDto.productId}`);
     const { productId, startDate, endDate, discountPercentage } = createOfferDto;
@@ -110,7 +108,8 @@ export class OffersService implements OnModuleInit {
     const offer = await this.offerModel.create({
       id: crypto.randomUUID(),
       productId,
-      productName: product.name, // Asegúrate de que el nombre del producto se incluya
+      entrepreneurId: product.entrepreneurId,
+      productName: product.name, 
       originalPrice,
       discountedPrice,
       discountPercentage,
@@ -121,9 +120,8 @@ export class OffersService implements OnModuleInit {
     return offer; 
   }
   
-  /**
-   * Activa ofertas cuyo inicio coincide con la fecha actual.
-   */
+  // Cron para activar las ofertas que coinciden con la fecha actual
+
   @Cron(CronExpression.EVERY_MINUTE)
   
   async activateOffers(): Promise<{ message: string; activatedOffers?: Offer[] }> {
@@ -176,12 +174,11 @@ export class OffersService implements OnModuleInit {
     return { message: 'Ofertas activadas correctamente.', activatedOffers };
   }
   
-  /**
-   * Finaliza ofertas cuya fecha de fin coincide con la fecha actual.
-   */
+  //Cron para finalizar ofertas que coinciden con la fecha actual o menor
+  
   @Cron(CronExpression.EVERY_MINUTE)
   async finalizeOffers(): Promise<{ message: string; finalizedOffers?: Offer[] }> {
-    const now = new Date().toISOString(); // Generar la hora actual en formato ISO 8601 (UTC)
+    const now = new Date().toISOString(); 
   
     this.logger.log(`Checking for offers to finalize at: ${now}`);
   
@@ -226,9 +223,8 @@ export class OffersService implements OnModuleInit {
     return { message: 'Ofertas finalizadas correctamente.', finalizedOffers };
   }
   
-  /**
- * Obtiene todas las ofertas (excluye las eliminadas).
- */
+  // Metodo para obtener todas las ofertas
+
 async findAll(): Promise<Offer[]> {
   this.logger.log('Fetching all offers...');
   const offers = await this.offerModel.findAll({
@@ -246,10 +242,7 @@ async findAll(): Promise<Offer[]> {
   return offers;
 }
 
-  /**
- * Obtiene una oferta por su ID.
- * @param id - ID de la oferta.
- */
+// Metodo para obtener una oferta por su ID
 async findOne(id: string): Promise<Offer> {
   const offer = await this.offerModel.findOne({
     where: {
@@ -264,12 +257,8 @@ async findOne(id: string): Promise<Offer> {
 
   return offer;
 }
+// Metodo para actualizar una oferta
 
-/**
- * Actualiza una oferta existente.
- * @param id - ID de la oferta.
- * @param updateOfferDto - DTO con los datos para actualizar la oferta.
- */
 async update(id: string, updateOfferDto: UpdateOfferDto): Promise<Offer> {
   const offer = await this.findOne(id);
 
@@ -312,11 +301,8 @@ async update(id: string, updateOfferDto: UpdateOfferDto): Promise<Offer> {
 
   return updatedOffer;
 }
+// Metodo para eliminar una oferta
 
-/**
- * Elimina una oferta por su ID (borrado lógico).
- * @param id - ID de la oferta.
- */
 async remove(id: string): Promise<{ message: string; id: string }> {
   const offer = await this.findOne(id);
 
@@ -325,5 +311,26 @@ async remove(id: string): Promise<{ message: string; id: string }> {
   return { message: 'Oferta eliminada correctamente.', id };
 }
 
+// Buscar ofertas por emprenedor
+async findOfferByEntrepreneurId(entrepreneurId: string): Promise<Offer[]> {
+try {
+  const offers = await this.offerModel.findAll({
+    where: {
+      entrepreneurId,
+      deletedAt: null,
+    },
+  });
+  if (offers.length === 0) {
+      this.logger.warn(`No offers found for entrepreneur ID: ${entrepreneurId}`);
+  }else{
+    this.logger.log(`Found ${offers.length} offer(s) for entrepreneur ID: ${entrepreneurId}`);
+  }
+  return offers;
+}catch(error){
+  this.logger.error(`Error finding offers for entrepreneur ID: ${entrepreneurId}. Error: ${error.message}`);
+  throw new BadRequestException('Error al buscar ofertas para el emprendedor.');
+      }
+    }
 }
+
 

@@ -18,6 +18,14 @@ export class Offer extends Model {
   productId: string;
 
   @Column({
+    type: DataType.STRING(36),
+    allowNull: false, 
+    field: 'ENTREPRENEUR_ID',
+  })
+  entrepreneurId: string;
+  
+
+  @Column({
     type: DataType.STRING(255), 
     field: 'PRODUCT_NAME',
   })
