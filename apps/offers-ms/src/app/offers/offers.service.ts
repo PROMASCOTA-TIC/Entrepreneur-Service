@@ -35,9 +35,7 @@ export class OffersService implements OnModuleInit {
     }
   }
 
-  /**
- * Crea una nueva oferta.
- */
+  // Metodo para crear una oferta
   async create(createOfferDto: CreateOfferDto): Promise<Offer> {
     this.logger.log(`Creating offer with productId: ${createOfferDto.productId}`);
     const { productId, startDate, endDate, discountPercentage } = createOfferDto;
@@ -110,20 +108,21 @@ export class OffersService implements OnModuleInit {
     const offer = await this.offerModel.create({
       id: crypto.randomUUID(),
       productId,
-      productName: product.name, // Asegúrate de que el nombre del producto se incluya
+      entrepreneurId: product.entrepreneurId,
+      productName: product.name, 
       originalPrice,
       discountedPrice,
       discountPercentage,
       startDate,
       endDate,
+      status:'PENDING'
     });
     this.logger.log(`Offer created with ID: ${offer.id}`);
     return offer; 
   }
   
-  /**
-   * Activa ofertas cuyo inicio coincide con la fecha actual.
-   */
+  // Cron para activar las ofertas que coinciden con la fecha actual
+
   @Cron(CronExpression.EVERY_MINUTE)
   
   async activateOffers(): Promise<{ message: string; activatedOffers?: Offer[] }> {
@@ -134,6 +133,7 @@ export class OffersService implements OnModuleInit {
     const offersToActivate = await this.offerModel.findAll({
       where: {
         startDate: { [Op.lte]: now }, // Fecha de inicio menor o igual a la actual
+        status: 'PENDING',
         deletedAt: null, 
       },
     });
@@ -159,7 +159,7 @@ export class OffersService implements OnModuleInit {
             price: offer.discountedPrice,
           }),
         );
-  
+        await offer.update({ status: 'ACTIVE' });
         this.logger.log(`Offer ID: ${offer.id} activated successfully.`);
         activatedOffers.push(offer);
       } catch (error) {
@@ -176,12 +176,11 @@ export class OffersService implements OnModuleInit {
     return { message: 'Ofertas activadas correctamente.', activatedOffers };
   }
   
-  /**
-   * Finaliza ofertas cuya fecha de fin coincide con la fecha actual.
-   */
+  //Cron para finalizar ofertas que coinciden con la fecha actual o menor
+  
   @Cron(CronExpression.EVERY_MINUTE)
   async finalizeOffers(): Promise<{ message: string; finalizedOffers?: Offer[] }> {
-    const now = new Date().toISOString(); // Generar la hora actual en formato ISO 8601 (UTC)
+    const now = new Date().toISOString(); 
   
     this.logger.log(`Checking for offers to finalize at: ${now}`);
   
@@ -190,6 +189,7 @@ export class OffersService implements OnModuleInit {
       where: {
         endDate: { [Op.lte]: now }, 
         deletedAt: null,
+        status: 'ACTIVE'
       },
     });
   
@@ -215,6 +215,7 @@ export class OffersService implements OnModuleInit {
   
         // Actualizar la oferta como finalizada (borrado lógico)
         await offer.update({ deletedAt: new Date().toISOString() });
+        await offer.update({status:'FINISHED'})
   
         finalizedOffers.push(offer);
         this.logger.log(`Offer ID ${offer.id} finalized successfully.`);
@@ -226,9 +227,8 @@ export class OffersService implements OnModuleInit {
     return { message: 'Ofertas finalizadas correctamente.', finalizedOffers };
   }
   
-  /**
- * Obtiene todas las ofertas (excluye las eliminadas).
- */
+  // Metodo para obtener todas las ofertas
+
 async findAll(): Promise<Offer[]> {
   this.logger.log('Fetching all offers...');
   const offers = await this.offerModel.findAll({
@@ -246,10 +246,7 @@ async findAll(): Promise<Offer[]> {
   return offers;
 }
 
-  /**
- * Obtiene una oferta por su ID.
- * @param id - ID de la oferta.
- */
+// Metodo para obtener una oferta por su ID
 async findOne(id: string): Promise<Offer> {
   const offer = await this.offerModel.findOne({
     where: {
@@ -264,16 +261,20 @@ async findOne(id: string): Promise<Offer> {
 
   return offer;
 }
+// Metodo para actualizar una oferta
 
-/**
- * Actualiza una oferta existente.
- * @param id - ID de la oferta.
- * @param updateOfferDto - DTO con los datos para actualizar la oferta.
- */
 async update(id: string, updateOfferDto: UpdateOfferDto): Promise<Offer> {
   const offer = await this.findOne(id);
-
+  if(offer.status === 'ACTIVE'){
+    await firstValueFrom(
+      this.client.send('update_product_price',{
+        id: offer.productId,
+        price: offer.originalPrice,
+      }),
+    );
+  }
   const { startDate, endDate, discountPercentage } = updateOfferDto;
+
 
   if (startDate && startDate <= new Date().toISOString()) {
     throw new BadRequestException(
@@ -312,18 +313,42 @@ async update(id: string, updateOfferDto: UpdateOfferDto): Promise<Offer> {
 
   return updatedOffer;
 }
+// Metodo para eliminar una oferta
 
-/**
- * Elimina una oferta por su ID (borrado lógico).
- * @param id - ID de la oferta.
- */
 async remove(id: string): Promise<{ message: string; id: string }> {
   const offer = await this.findOne(id);
-
-  await offer.update({ deletedAt: new Date().toISOString() });
-
+  if (offer.status === 'ACTIVE') {
+    await firstValueFrom(
+      this.client.send('update_product_price', {
+        id: offer.productId,
+        price: offer.originalPrice,
+      }),
+    );
+  }
+  await offer.update({ status:'DELETED', deletedAt: new Date().toISOString() });
   return { message: 'Oferta eliminada correctamente.', id };
 }
 
+// Buscar ofertas por emprenedor
+async findOfferByEntrepreneurId(entrepreneurId: string): Promise<Offer[]> {
+try {
+  const offers = await this.offerModel.findAll({
+    where: {
+      entrepreneurId,
+      deletedAt: null,
+    },
+  });
+  if (offers.length === 0) {
+      this.logger.warn(`No offers found for entrepreneur ID: ${entrepreneurId}`);
+  }else{
+    this.logger.log(`Found ${offers.length} offer(s) for entrepreneur ID: ${entrepreneurId}`);
+  }
+  return offers;
+}catch(error){
+  this.logger.error(`Error finding offers for entrepreneur ID: ${entrepreneurId}. Error: ${error.message}`);
+  throw new BadRequestException('Error al buscar ofertas para el emprendedor.');
+      }
+    }
 }
+
 
