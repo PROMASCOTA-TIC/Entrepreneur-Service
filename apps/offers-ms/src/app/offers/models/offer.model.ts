@@ -1,4 +1,5 @@
-import { Model, Column, Table, DataType } from 'sequelize-typescript';
+
+import { Model, Column, Table, DataType, AllowNull } from 'sequelize-typescript';
 
 @Table({ tableName: 'OFFERS', timestamps: false })
 export class Offer extends Model {
@@ -12,18 +13,20 @@ export class Offer extends Model {
 
   @Column({
     type: DataType.STRING(36),
-    allowNull: false,
-    field: 'PRODUCT_ID',
-  })
-  productId: string;
-
-  @Column({
-    type: DataType.STRING(36),
     allowNull: false, 
     field: 'ENTREPRENEUR_ID',
   })
   entrepreneurId: string;
   
+
+  @Column({
+    type: DataType.STRING(36),
+    allowNull: false,
+    field: 'PRODUCT_ID',
+  })
+  productId: string;
+
+
 
   @Column({
     type: DataType.STRING(255), 
@@ -87,4 +90,15 @@ export class Offer extends Model {
     field: 'DELETED_AT',
   })
   deletedAt?: Date;
+
+
+  @Column({
+    type: DataType.STRING(20),
+    allowNull: false,
+    field: 'STATUS',
+    defaultValue: 'PENDING',
+  })
+  status: string;
+
 }
+
