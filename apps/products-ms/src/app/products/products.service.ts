@@ -14,6 +14,10 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { lastValueFrom } from 'rxjs';
 import { ClientProxy } from '@nestjs/microservices';
+import { PetType } from './models/pettype.models';
+import { Category } from './models/category.models';
+import { Subcategory } from './models/subcategory.models';
+import { Size } from './models/size.models';
 
 
 
@@ -22,6 +26,14 @@ export class ProductsService implements OnModuleInit {
   constructor(
     @InjectModel(Product)
     private readonly productModel: typeof Product,
+    @InjectModel(PetType)
+    private readonly petTypeModel: typeof PetType,
+    @InjectModel(Category)
+    private readonly categoryModel: typeof Category,
+    @InjectModel(Subcategory)
+    private readonly subcategoryModel: typeof Subcategory,
+    @InjectModel(Size)
+    private readonly sizeModel: typeof Size,
     @Inject('USER_SERVICE') private readonly  client: ClientProxy,
   ) {}
   private readonly logger = new Logger('ProductsService');
@@ -164,4 +176,91 @@ export class ProductsService implements OnModuleInit {
       );
     }
   }
+
+  async findAllPetTypes(): Promise<PetType[]> {
+    try {
+        this.logger.log('Fetching all pet types from the database.');
+
+        // Consulta específica solo de la tabla PET_TYPES sin incluir relaciones
+        const petTypes = await this.petTypeModel.findAll({
+            attributes: ['id', 'name'], // Selecciona solo columnas necesarias
+            raw: true, // Evita relaciones y devuelve objetos planos
+        });
+
+        this.logger.log(`Retrieved ${petTypes.length} pet types.`);
+        return petTypes;
+    } catch (error) {
+        this.logger.error('Error retrieving pet types:', error.message);
+        throw new HttpException(
+            `Error retrieving pet types: ${error.message}`,
+            HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+    }
+}
+
+ async findAllCategories(): Promise<Category[]> {
+    try {
+        this.logger.log('Fetching all categories from the database.');
+
+        // Consulta específica solo de la tabla CATEGORIES sin incluir relaciones
+        const categories = await this.categoryModel.findAll({
+            attributes: ['id', 'name'], // Selecciona solo columnas necesarias
+            raw: true, // Evita relaciones y devuelve objetos planos
+        });
+
+        this.logger.log(`Retrieved ${categories.length} categories.`);
+        return categories;
+    } catch (error) {
+        this.logger.error('Error retrieving categories:', error.message);
+        throw new HttpException(
+            `Error retrieving categories: ${error.message}`,
+            HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+    }
+  }
+
+  async findAllSubcategories(): Promise<Subcategory[]> {
+    try {
+        this.logger.log('Fetching all subcategories from the database.');
+
+        // Consulta específica solo de la tabla SUBCATEGORIES sin incluir relaciones
+        const subcategories = await this.subcategoryModel.findAll({
+            attributes: ['id', 'name', 'categoryId'], // Selecciona solo columnas necesarias
+            raw: true, // Evita relaciones y devuelve objetos planos
+        });
+
+        this.logger.log(`Retrieved ${subcategories.length} subcategories.`);
+        return subcategories;
+    } catch (error) {
+        this.logger.error('Error retrieving subcategories:', error.message);
+        throw new HttpException(
+            `Error retrieving subcategories: ${error.message}`,
+            HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+    }
+  }
+
+  async findAllSizes(): Promise<Size[]> {
+    try {
+        this.logger.log('Fetching all sizes from the database.');
+
+        // Consulta específica solo de la tabla SIZES sin incluir relaciones
+        const sizes = await this.sizeModel.findAll({
+            attributes: ['id', 'name', ], // Selecciona solo columnas necesarias
+            raw: true, // Evita relaciones y devuelve objetos planos
+        });
+
+        this.logger.log(`Retrieved ${sizes.length} sizes.`);
+        return sizes;
+    } catch (error) {
+        this.logger.error('Error retrieving sizes:', error.message);
+        throw new HttpException(
+            `Error retrieving sizes: ${error.message}`,
+            HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+    }
+  }
+
+
+  
 }

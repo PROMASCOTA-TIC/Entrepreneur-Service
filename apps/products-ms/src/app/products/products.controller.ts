@@ -148,6 +148,56 @@ async findAllByEntrepreneur(@Payload() entrepreneurId: string) {
   }
 }
 
+@MessagePattern('get_pet_types') // Define el patrón para los clientes NATS
+async getAllPetTypes() {
+  this.logger.log('Mensaje recibido para obtener todos los tipos de mascotas.');
+  try {
+    const petTypes = await this.productsService.findAllPetTypes();
+    this.logger.log(`Se encontraron ${petTypes.length} tipos de mascotas.`);
+    return petTypes;
+  } catch (error) {
+    this.logger.error('Error al obtener tipos de mascotas:', error.message);
+    throw new Error(`Error retrieving pet types: ${error.message}`);
+  }
+}
 
+@MessagePattern('get_categories')
+async getAllCategories() {
+  this.logger.log('Mensaje recibido para obtener todas las categorías.');
+  try {
+    const categories = await this.productsService.findAllCategories();
+    this.logger.log(`Se encontraron ${categories.length} categorías.`);
+    return categories;
+  } catch (error) {
+    this.logger.error('Error al obtener categorías:', error.message);
+    throw new Error(`Error retrieving categories: ${error.message}`);
+  }
+}
+
+@MessagePattern('get_subcategories')
+async getAllSubcategories() {
+  this.logger.log('Mensaje recibido para obtener todas las subcategorías.');
+  try {
+    const subcategories = await this.productsService.findAllSubcategories();
+    this.logger.log(`Se encontraron ${subcategories.length} subcategorías.`);
+    return subcategories;
+  } catch (error) {
+    this.logger.error('Error al obtener subcategorías:', error.message);
+    throw new Error(`Error retrieving subcategories: ${error.message}`);
+  }
+}
+
+@MessagePattern('get_sizes')
+async getAllSizes() {
+  this.logger.log('Mensaje recibido para obtener todos los tamaños.');
+  try {
+    const sizes = await this.productsService.findAllSizes();
+    this.logger.log(`Se encontraron ${sizes.length} tamaños.`);
+    return sizes;
+  } catch (error) {
+    this.logger.error('Error al obtener tamaños:', error.message);
+    throw new Error(`Error retrieving sizes: ${error.message}`);
+  }
+  }
 
 }
