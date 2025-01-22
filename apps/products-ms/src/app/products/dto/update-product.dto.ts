@@ -1,5 +1,5 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { IsOptional, IsString, IsNumber, Min, IsUUID, IsIn } from 'class-validator';
+import { IsOptional, IsString, IsNumber, Min, IsUUID, IsIn, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateProductDto } from './create-product.dto';
 
@@ -52,7 +52,9 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
   @IsOptional()
   description?: string;
 
-  @IsString()
+
+  @IsArray()
+  @IsString({ each: true })
   @IsOptional()
   multimediaFiles?: string;
 

@@ -66,7 +66,32 @@ export class ProductsService implements OnModuleInit {
     }
   }
   
+  async create(createProductDto: CreateProductDto): Promise<Product> {
+    try {
+      // Validar que el emprendedor exista
+      await this.validateEntrepreneur(createProductDto.entrepreneurId);
   
+      // Lógica para convertir el array multimediaFiles en una cadena separada por comas
+      const multimediaFiles = Array.isArray(createProductDto.multimediaFiles)
+        ? createProductDto.multimediaFiles.join(', ') // Unir URLs con comas
+        : createProductDto.multimediaFiles;
+  
+      // Crear el producto con el campo multimediaFiles ajustado
+      const product = await this.productModel.create({
+        ...createProductDto,
+        multimediaFiles, // Sobrescribir el campo con la lógica aplicada
+      });
+  
+      this.logger.log(`Product created: ${product.id}`);
+      return product;
+    } catch (error) {
+      this.logger.error('Error creating product:', error.message);
+      throw error;
+    }
+  }
+
+  
+ /* 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     try {
       await this.validateEntrepreneur(createProductDto.entrepreneurId);
@@ -81,6 +106,7 @@ export class ProductsService implements OnModuleInit {
       throw error;
     }
   }
+  */
 
   async findAll(): Promise<Product[]> {
     try {
