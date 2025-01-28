@@ -200,4 +200,38 @@ async getAllSizes() {
   }
   }
 
+  @MessagePattern('get_product_for_edit')
+async findProductForEdit(@Payload() payload: string | { id: string }) {
+  let id: string;
+
+  // Validar el payload para obtener el ID
+  if (typeof payload === 'string') {
+    id = payload; 
+  } else if (payload && payload.id) {
+    id = payload.id; 
+  } else {
+    this.logger.error('Payload inválido en get_product_for_edit:', payload);
+    throw new BadRequestException(
+      'El payload debe contener un campo "id" o ser un string.',
+    );
+  }
+
+  this.logger.log(`Mensaje recibido en get_product_for_edit con ID: ${id}`);
+  try {
+    // Llamar al servicio para obtener los datos formateados
+    const product = await this.productsService.findProductForEdit(id);
+    this.logger.log(`Detalles del producto obtenidos exitosamente para edición con ID: ${id}`);
+    return product;
+  } catch (error) {
+    this.logger.error(
+      `Error al obtener los detalles del producto para edición con ID ${id}: ${error.message}`,
+    );
+    throw new HttpException(
+      `Error al obtener los detalles del producto: ${error.message}`,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
+
 }

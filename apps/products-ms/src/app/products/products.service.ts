@@ -127,23 +127,66 @@ export class ProductsService implements OnModuleInit {
   }
 
 
-  async findAllByEntrepreneur(entrepreneurId: string): Promise<Product[]> {
+  async findAllByEntrepreneur(entrepreneurId: string): Promise<any[]> {
     try {
+      // Validar el ID del emprendedor
       await this.validateEntrepreneur(entrepreneurId);
+  
+      // Consultar los productos con las relaciones necesarias
       const products = await this.productModel.findAll({
         where: {
           entrepreneurId,
-          deletedAt: null, 
+          deletedAt: null,
         },
+        include: [
+          {
+            model: PetType,
+            as: 'petType',
+            attributes: ['name'], // Obtener solo el nombre
+          },
+          {
+            model: Category,
+            as: 'category',
+            attributes: ['name'], // Obtener solo el nombre
+          },
+          {
+            model: Subcategory,
+            as: 'subcategory',
+            attributes: ['name'], // Obtener solo el nombre
+          },
+          {
+            model: Size,
+            as: 'size',
+            attributes: ['name'], // Obtener solo el nombre
+          },
+        ],
       });
   
+      // Validar si hay productos
       if (products.length === 0) {
         this.logger.warn(`No se encontraron productos para el emprendedor con ID ${entrepreneurId}`);
       } else {
         this.logger.log(`Se encontraron ${products.length} productos para el emprendedor con ID ${entrepreneurId}`);
       }
   
-      return products;
+      // Formatear los datos para devolver los nombres
+      const formattedProducts = products.map((product) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        publicationType: product.publicationType === '1' ? 'Producto' : 'Servicio',
+        petType: product.petType?.name || null,
+        category: product.category?.name || null,
+        subcategory: product.subcategory?.name || null,
+        size: product.size?.name || null,
+        weight: product.weight,
+        finalPrice: product.finalPrice,
+        stock: product.stock,
+        multimediaFiles: product.multimediaFiles,
+        createdAt: product.createdAt,
+      }));
+  
+      return formattedProducts;
     } catch (error) {
       this.logger.error(`Error al obtener productos para el emprendedor con ID ${entrepreneurId}:`, error.message);
       throw new BadRequestException(`Error al obtener productos: ${error.message}`);
@@ -288,5 +331,76 @@ export class ProductsService implements OnModuleInit {
   }
 
 
+  async findProductForEdit(productId: string): Promise<any> {
+    try {
+      this.logger.log(`Fetching product details for editing with ID: ${productId}`);
+  
+      const product = await this.productModel.findByPk(productId, {
+        include: [
+          {
+            model: PetType,
+            as: 'petType',
+            attributes: ['id', 'name'], // Incluir ID y nombre
+          },
+          {
+            model: Category,
+            as: 'category',
+            attributes: ['id', 'name'], // Incluir ID y nombre
+          },
+          {
+            model: Subcategory,
+            as: 'subcategory',
+            attributes: ['id', 'name'], // Incluir ID y nombre
+          },
+          {
+            model: Size,
+            as: 'size',
+            attributes: ['id', 'name'], // Incluir ID y nombre
+          },
+        ],
+      });
+  
+      if (!product) {
+        this.logger.warn(`Product with ID ${productId} not found.`);
+        throw new NotFoundException(`Producto con ID ${productId} no encontrado.`);
+      }
+  
+      const formattedProduct = {
+        id: product.id,
+        entrepreneurId: product.entrepreneurId,
+        publicationType: product.publicationType,
+        petTypeId: product.petTypeId,
+        petType: product.petType ? { id: product.petType.id, name: product.petType.name } : null,
+        categoryId: product.categoryId,
+        category: product.category ? { id: product.category.id, name: product.category.name } : null,
+        subcategoryId: product.subcategoryId,
+        subcategory: product.subcategory
+          ? { id: product.subcategory.id, name: product.subcategory.name }
+          : null,
+        sizeId: product.sizeId,
+        size: product.size ? { id: product.size.id, name: product.size.name } : null,
+        name: product.name,
+        description: product.description,
+        finalPrice: product.finalPrice,
+        stock: product.stock,
+        weight: product.weight,
+        multimediaFiles: product.multimediaFiles.split(',').map((url) => url.trim()), // Convertir string a array
+        createdAt: product.createdAt,
+      };
+  
+      this.logger.log(`Product details for editing fetched successfully: ${productId}`);
+      return formattedProduct;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching product details for editing with ID ${productId}: ${error.message}`,
+      );
+      throw new HttpException(
+        `Error al obtener los detalles del producto: ${error.message}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  
   
 }
