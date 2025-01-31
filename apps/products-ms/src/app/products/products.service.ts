@@ -215,12 +215,19 @@ export class ProductsService implements OnModuleInit {
   async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
     try {
       const product = await this.findOne(id);
-
+  
+      // Convertir multimediaFiles a string si es un array
+      const multimediaFiles =
+        Array.isArray(updateProductDto.multimediaFiles) 
+          ? updateProductDto.multimediaFiles.join(', ') 
+          : updateProductDto.multimediaFiles;
+  
       await product.update({
         ...updateProductDto,
+        multimediaFiles, // Sobrescribir multimediaFiles con el formato correcto
         updatedAt: new Date(),
       });
-
+  
       this.logger.log(`Product updated: ${id}`);
       return product;
     } catch (error) {
@@ -228,6 +235,7 @@ export class ProductsService implements OnModuleInit {
       throw error;
     }
   }
+  
 
   async remove(id: string): Promise<void> {
     try {
