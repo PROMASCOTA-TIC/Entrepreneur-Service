@@ -148,6 +148,22 @@ async findAllByEntrepreneur(@Payload() entrepreneurId: string) {
   }
 }
 
+@MessagePattern('get_low_stock_products_by_entrepreneur')
+async findLowStockProducts(@Payload() entrepreneurId: string) {
+  this.logger.log(`Obteniendo productos con stock menor a 3 del emprendedor con ID: ${entrepreneurId}`);
+  try {
+    return await this.productsService.findLowStockProductsByEntrepreneur(entrepreneurId);
+  } catch (error) {
+    this.logger.error(`Error al obtener productos con bajo stock: ${error.message}`);
+    throw new HttpException(
+      `Error al obtener productos con bajo stock: ${error.message}`,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
+
+
 @MessagePattern('get_pet_types') // Define el patrón para los clientes NATS
 async getAllPetTypes() {
   this.logger.log('Mensaje recibido para obtener todos los tipos de mascotas.');

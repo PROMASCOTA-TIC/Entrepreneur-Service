@@ -18,7 +18,7 @@ import { PetType } from './models/pettype.models';
 import { Category } from './models/category.models';
 import { Subcategory } from './models/subcategory.models';
 import { Size } from './models/size.models';
-
+import { Op } from 'sequelize';
 
 
 @Injectable()
@@ -90,23 +90,6 @@ export class ProductsService implements OnModuleInit {
     }
   }
 
-  
- /* 
-  async create(createProductDto: CreateProductDto): Promise<Product> {
-    try {
-      await this.validateEntrepreneur(createProductDto.entrepreneurId);
-      const product = await this.productModel.create({
-        ...createProductDto,
-      });
-  
-      this.logger.log(`Product created: ${product.id}`);
-      return product;
-    } catch (error) {
-      this.logger.error('Error creating product:', error.message);
-      throw error;
-    }
-  }
-  */
 
   async findAll(): Promise<Product[]> {
     try {
@@ -192,8 +175,56 @@ export class ProductsService implements OnModuleInit {
       throw new BadRequestException(`Error al obtener productos: ${error.message}`);
     }
   }
-  
 
+  async findLowStockProductsByEntrepreneur(entrepreneurId: string): Promise<any[]> {
+    try {
+      // Validar el ID del emprendedor
+      await this.validateEntrepreneur(entrepreneurId);
+
+      // Consultar los productos con stock menor a 3
+      const products = await this.productModel.findAll({
+        where: {
+          entrepreneurId,
+          stock: { [Op.lt]: 5 }, // Filtrar productos con stock menor a 3
+          deletedAt: null,
+        },
+        include: [
+          { model: PetType, as: 'petType', attributes: ['name'] },
+          { model: Category, as: 'category', attributes: ['name'] },
+          { model: Subcategory, as: 'subcategory', attributes: ['name'] },
+          { model: Size, as: 'size', attributes: ['name'] },
+        ],
+      });
+
+      // Validar si hay productos con stock bajo
+      if (products.length === 0) {
+        this.logger.warn(`No se encontraron productos con stock bajo para el emprendedor con ID ${entrepreneurId}`);
+      } else {
+        this.logger.log(`Se encontraron ${products.length} productos con stock bajo para el emprendedor con ID ${entrepreneurId}`);
+      }
+
+      // Formatear los datos para devolverlos de forma ordenada
+      return products.map((product) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        publicationType: product.publicationType === '1' ? 'Producto' : 'Servicio',
+        petType: product.petType?.name || null,
+        category: product.category?.name || null,
+        subcategory: product.subcategory?.name || null,
+        size: product.size?.name || null,
+        weight: product.weight,
+        finalPrice: product.finalPrice,
+        stock: product.stock,
+        multimediaFiles: product.multimediaFiles,
+        createdAt: product.createdAt,
+      }));
+    } catch (error) {
+      this.logger.error(`Error al obtener productos con stock bajo para el emprendedor con ID ${entrepreneurId}: ${error.message}`);
+      throw new BadRequestException(`Error al obtener productos con stock bajo: ${error.message}`);
+    }
+  }
+  
   async findOne(id: string): Promise<Product> {
     try {
       const product = await this.productModel.findByPk(id, {
