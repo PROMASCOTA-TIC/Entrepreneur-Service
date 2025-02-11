@@ -61,4 +61,10 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
   @IsString({ message: 'El nombre del producto debe ser una cadena válida.' })
   @IsOptional()
   name?: string; 
+
+  @IsNumber({ maxDecimalPlaces: 0 }, { message: 'La cantidad vendida debe ser un número entero.' })
+  @Min(0, { message: 'La cantidad vendida no puede ser negativa.' })
+  @Type(() => Number)
+  @IsOptional()
+  soldQuantity?: number;
 }

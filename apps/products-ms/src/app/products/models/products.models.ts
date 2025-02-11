@@ -136,4 +136,14 @@ export class Product extends Model {
         field: 'DELETED_AT',
     })
     deletedAt?: Date;
+
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+        field: 'SOLD_QUANTITY',
+    })
+    soldQuantity: number;
+
+    
 }
