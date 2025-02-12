@@ -21,6 +21,13 @@ import { Size } from './models/size.models';
           servers: [process.env.NATS_SERVERS || 'nats://localhost:4222'],
         },
       },
+      {
+        name: 'ORDER_SERVICE',
+        transport: Transport.NATS,
+        options: {
+          servers: [process.env.NATS_SERVERS || 'nats://localhost:4222'],
+        },
+      },
     ]),
   ],
   controllers: [ProductsController],

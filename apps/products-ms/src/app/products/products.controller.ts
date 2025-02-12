@@ -249,5 +249,10 @@ async findProductForEdit(@Payload() payload: string | { id: string }) {
   }
 }
 
+ @MessagePattern('get_orders_total_by_entrepreneur')
+  async handleGetOrdersTotalByEntrepreneur(@Payload() data: { entrepreneurId: string }) {
+    this.logger.log(`Received request for entrepreneur ID: ${data.entrepreneurId}`);
+    return this.productsService.getOrdersTotalByEntrepreneur(data.entrepreneurId);
+  }
 
 }

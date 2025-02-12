@@ -35,6 +35,7 @@ export class ProductsService implements OnModuleInit {
     @InjectModel(Size)
     private readonly sizeModel: typeof Size,
     @Inject('USER_SERVICE') private readonly  client: ClientProxy,
+    @Inject('ORDER_SERVICE') private readonly orderClient: ClientProxy,
   ) {}
   private readonly logger = new Logger('ProductsService');
 
@@ -440,6 +441,108 @@ export class ProductsService implements OnModuleInit {
     }
   }
 
+  async getOrdersTotalByEntrepreneur(entrepreneurId: string) {
+    try {
+      this.logger.log(`Fetching orders for entrepreneur ID: ${entrepreneurId}`);
+  
+      // Obtener las órdenes del microservicio de órdenes
+      const orders = await lastValueFrom(
+        this.orderClient.send('get_orders_by_entrepreneur', { entrepreneurId }),
+      );
+  
+      if (!orders || orders.length === 0) {
+        this.logger.warn(`No orders found for entrepreneur ID: ${entrepreneurId}`);
+        return { entrepreneurId, totalOrders: 0, orders: [] };
+      }
+  
+      // Obtener todos los IDs de productos en las órdenes
+      const itemIds = orders.flatMap(order => order.orderItems.map(item => item.itemId));
+  
+      // Consultar la base de datos de productos para obtener los nombres
+      const products = await this.productModel.findAll({
+        where: { id: itemIds },
+        attributes: ['id', 'name'],
+      });
+  
+      // Crear un mapa de ID de producto -> Nombre
+      const productNameMap = products.reduce((acc, product) => {
+        acc[product.id] = product.name;
+        return acc;
+      }, {});
+  
+      // Procesar cada orden para calcular totales y obtener información del comprador
+      const ordersWithDetails = await Promise.allSettled(
+        orders.map(async (order) => {
+          const total = order.orderItems.reduce((acc, item) => acc + item.quantity * item.price, 0);
+          const totalItems = order.orderItems.reduce((acc, item) => acc + item.quantity, 0);
+  
+          // Obtener información del comprador (cliente)
+          let buyerInfo = null;
+          try {
+            buyerInfo = await lastValueFrom(this.client.send('find_pet_owner_by_id', order.userId));
+          } catch (error) {
+            this.logger.warn(`Buyer info not found for userId: ${order.userId}, skipping...`);
+          }
+  
+          // Agregar el nombre del producto a cada `orderItem`
+          const orderItemsWithNames = order.orderItems.map((item) => ({
+            orderItemId: item.orderItemId,
+            itemId: item.itemId,
+            name: productNameMap[item.itemId] || 'Producto no encontrado', // Agregar el nombre del producto
+            quantity: item.quantity,
+            price: item.price,
+            totalItems: item.quantity,
+            status: item.status,
+            entrepreneurId: item.entrepreneurId,
+            orderId: item.orderId,
+            createdAt: item.createdAt,
+          }));
+  
+          return {
+            id: order.id,
+            userId: order.userId,
+            status: order.status,
+            isActive: order.isActive,
+            isPaid: order.isPaid,
+            paidAt: order.paidAt,
+            homeDelivery: order.homeDelivery,
+            petOwnerAddressId: order.petOwnerAddressId,
+            petOwnerAddress: order.petOwnerAddress,
+            petOwnerPhone: order.petOwnerPhone,
+            createdAt: order.createdAt,
+            updatedAt: order.updatedAt,
+            canceledAt: order.canceledAt,
+            total,
+            totalItems,
+            orderItems: orderItemsWithNames, // 🔥 Ahora cada `orderItem` incluye el nombre del producto
+            buyer: buyerInfo
+              ? {
+                  id: buyerInfo.id,
+                  name: buyerInfo.name,
+                  email: buyerInfo.email,
+                  phoneNumber: buyerInfo.phoneNumber,
+                }
+              : null,
+          };
+        }),
+      );
+  
+      // Filtrar solo las órdenes que se resolvieron correctamente
+      const successfulOrders = ordersWithDetails
+        .filter((res) => res.status === 'fulfilled')
+        .map((res) => res.value);
+  
+      return {
+        entrepreneurId,
+        totalOrders: successfulOrders.length,
+        orders: successfulOrders,
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching orders for entrepreneur ID ${entrepreneurId}: ${error.message}`);
+      throw new HttpException(`Error fetching orders: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+  
   
   
 }
