@@ -248,7 +248,24 @@ export class ProductsService implements OnModuleInit {
     try {
       const product = await this.findOne(id);
   
-      // Convertir multimediaFiles a string si es un array
+      if (!product) {
+        throw new NotFoundException(`Producto con ID ${id} no encontrado.`);
+    }
+    const currentSoldQuantity = Number(product.soldQuantity ?? 0);
+    const currentStock = Number(product.stock ?? 0);
+
+    const newSoldQuantity = updateProductDto.soldQuantity !== undefined
+        ? currentSoldQuantity + Number(updateProductDto.soldQuantity) 
+        : currentSoldQuantity;
+
+    const newStock = updateProductDto.stock !== undefined
+        ? Number(updateProductDto.stock)
+        : currentStock;
+
+    if (isNaN(newSoldQuantity) || isNaN(newStock)) {
+        throw new BadRequestException(`Stock o SoldQuantity contienen valores inválidos.`);
+    }
+  
       const multimediaFiles =
         Array.isArray(updateProductDto.multimediaFiles) 
           ? updateProductDto.multimediaFiles.join(', ') 
@@ -256,7 +273,9 @@ export class ProductsService implements OnModuleInit {
   
       await product.update({
         ...updateProductDto,
-        multimediaFiles, // Sobrescribir multimediaFiles con el formato correcto
+        multimediaFiles,
+        soldQuantity: newSoldQuantity,
+        stock: newStock,
         updatedAt: new Date(),
       });
   
@@ -445,7 +464,6 @@ export class ProductsService implements OnModuleInit {
     try {
       this.logger.log(`Fetching orders for entrepreneur ID: ${entrepreneurId}`);
   
-      // Obtener las órdenes del microservicio de órdenes
       const orders = await lastValueFrom(
         this.orderClient.send('get_orders_by_entrepreneur', { entrepreneurId }),
       );
@@ -455,13 +473,18 @@ export class ProductsService implements OnModuleInit {
         return { entrepreneurId, totalOrders: 0, orders: [] };
       }
   
-      // Obtener todos los IDs de productos en las órdenes
-      const itemIds = orders.flatMap(order => order.orderItems.map(item => item.itemId));
+      const paidOrders = orders.filter(order => order.isPaid);
   
-      // Consultar la base de datos de productos para obtener los nombres
+      if (paidOrders.length === 0) {
+        this.logger.warn(`No paid orders found for entrepreneur ID: ${entrepreneurId}`);
+        return { entrepreneurId, totalOrders: 0, orders: [] };
+      }
+  
+      const itemIds = paidOrders.flatMap(order => order.orderItems.map(item => item.itemId));
+  
       const products = await this.productModel.findAll({
         where: { id: itemIds },
-        attributes: ['id', 'name'],
+        attributes: ['id', 'name', 'soldQuantity'],
       });
   
       // Crear un mapa de ID de producto -> Nombre
@@ -472,9 +495,12 @@ export class ProductsService implements OnModuleInit {
   
       // Procesar cada orden para calcular totales y obtener información del comprador
       const ordersWithDetails = await Promise.allSettled(
-        orders.map(async (order) => {
+        paidOrders.map(async (order) => {
           const total = order.orderItems.reduce((acc, item) => acc + item.quantity * item.price, 0);
           const totalItems = order.orderItems.reduce((acc, item) => acc + item.quantity, 0);
+  
+          // 🔥 Verificar si TODOS los items de la orden han sido entregados
+          const isDelivered = order.orderItems.every(item => item.status > 0);
   
           // Obtener información del comprador (cliente)
           let buyerInfo = null;
@@ -490,6 +516,7 @@ export class ProductsService implements OnModuleInit {
             itemId: item.itemId,
             name: productNameMap[item.itemId] || 'Producto no encontrado', // Agregar el nombre del producto
             quantity: item.quantity,
+            soldQuantity: products.find(product => product.id === item.itemId)?.soldQuantity || 0,
             price: item.price,
             totalItems: item.quantity,
             status: item.status,
@@ -514,7 +541,8 @@ export class ProductsService implements OnModuleInit {
             canceledAt: order.canceledAt,
             total,
             totalItems,
-            orderItems: orderItemsWithNames, // 🔥 Ahora cada `orderItem` incluye el nombre del producto
+            orderItems: orderItemsWithNames,
+            isDelivered, // 🔥 Nuevo campo agregado
             buyer: buyerInfo
               ? {
                   id: buyerInfo.id,
