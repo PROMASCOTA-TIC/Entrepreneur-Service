@@ -544,5 +544,56 @@ export class ProductsService implements OnModuleInit {
   }
   
   
+  async findTopSellingProductsByEntrepreneur(entrepreneurId: string): Promise<any[]> {
+    try {
+      // Validar si el emprendedor existe
+      await this.validateEntrepreneur(entrepreneurId);
+  
+      // Obtener los productos ordenados por cantidad vendida de mayor a menor
+      const products = await this.productModel.findAll({
+        where: {
+          entrepreneurId,
+          deletedAt: null,
+        },
+        order: [['soldQuantity', 'DESC']], // Ordenar por cantidad vendida descendente
+        limit: 10, // Limitar a los 10 más vendidos
+        include: [
+          { model: PetType, as: 'petType', attributes: ['name'] },
+          { model: Category, as: 'category', attributes: ['name'] },
+          { model: Subcategory, as: 'subcategory', attributes: ['name'] },
+          { model: Size, as: 'size', attributes: ['name'] },
+        ],
+      });
+  
+      // Verificar si hay productos
+      if (products.length === 0) {
+        this.logger.warn(`No se encontraron productos más vendidos para el emprendedor con ID ${entrepreneurId}`);
+        return [];
+      }
+  
+      this.logger.log(`Se encontraron los 10 productos más vendidos para el emprendedor con ID ${entrepreneurId}`);
+  
+      // Formatear la respuesta
+      return products.map((product) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        publicationType: product.publicationType === '1' ? 'Producto' : 'Servicio',
+        petType: product.petType?.name || null,
+        category: product.category?.name || null,
+        subcategory: product.subcategory?.name || null,
+        size: product.size?.name || null,
+        weight: product.weight,
+        finalPrice: product.finalPrice,
+        stock: product.stock,
+        soldQuantity: product.soldQuantity, // Cantidad vendida
+        multimediaFiles: product.multimediaFiles,
+        createdAt: product.createdAt,
+      }));
+    } catch (error) {
+      this.logger.error(`Error al obtener los productos más vendidos para el emprendedor con ID ${entrepreneurId}: ${error.message}`);
+      throw new HttpException(`Error al obtener productos más vendidos: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
   
 }

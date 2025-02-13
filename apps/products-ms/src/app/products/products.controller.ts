@@ -255,4 +255,19 @@ async findProductForEdit(@Payload() payload: string | { id: string }) {
     return this.productsService.getOrdersTotalByEntrepreneur(data.entrepreneurId);
   }
 
+
+  @MessagePattern('get_top_selling_products_by_entrepreneur')
+async findTopSellingProducts(@Payload() entrepreneurId: string) {
+  this.logger.log(`Obteniendo los 10 productos más vendidos para el emprendedor con ID: ${entrepreneurId}`);
+  try {
+    return await this.productsService.findTopSellingProductsByEntrepreneur(entrepreneurId);
+  } catch (error) {
+    this.logger.error(`Error al obtener los productos más vendidos: ${error.message}`);
+    throw new HttpException(
+      `Error al obtener los productos más vendidos: ${error.message}`,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
 }
