@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsUUID, IsString, IsNumber, Min, IsOptional, IsIn } from "class-validator";
+import { IsUUID, IsString, IsNumber, Min, IsOptional, IsIn, IsArray } from "class-validator";
 
 export class CreateProductDto {
 
@@ -45,6 +45,7 @@ export class CreateProductDto {
   @IsString()
   description: string;
 
-  @IsString()
-  multimediaFiles: string;
+  @IsArray()
+  @IsString({ each: true })
+  multimediaFiles?: string;
 }
