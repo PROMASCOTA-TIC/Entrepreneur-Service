@@ -98,7 +98,7 @@ export class ProductsService implements OnModuleInit {
         where: {
           deletedAt: null,
         },
-        attributes: ['id', 'entrepreneurId','name', 'finalPrice', 'description', 'stock'], 
+        attributes: ['id', 'entrepreneurId','name', 'finalPrice', 'description', 'stock','multimediaFiles'], 
         include: { all: true }, 
       });
 
@@ -229,7 +229,7 @@ export class ProductsService implements OnModuleInit {
   async findOne(id: string): Promise<Product> {
     try {
       const product = await this.productModel.findByPk(id, {
-        attributes: ['id','entrepreneurId', 'name', 'finalPrice', 'description', 'stock'], 
+        attributes: ['id','entrepreneurId', 'name', 'finalPrice', 'description', 'stock','multimediaFiles'], 
         include: { all: true },
       });
 
@@ -593,7 +593,7 @@ export class ProductsService implements OnModuleInit {
         ],
       });
   
-      // Verificar si hay productos
+     
       if (products.length === 0) {
         this.logger.warn(`No se encontraron productos más vendidos para el emprendedor con ID ${entrepreneurId}`);
         return [];
@@ -614,7 +614,7 @@ export class ProductsService implements OnModuleInit {
         weight: product.weight,
         finalPrice: product.finalPrice,
         stock: product.stock,
-        soldQuantity: product.soldQuantity, // Cantidad vendida
+        soldQuantity: product.soldQuantity,
         multimediaFiles: product.multimediaFiles,
         createdAt: product.createdAt,
       }));
@@ -623,5 +623,97 @@ export class ProductsService implements OnModuleInit {
       throw new HttpException(`Error al obtener productos más vendidos: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  async findRecentProductsAll(): Promise<any[]> {
+    try {
+      const fiveDaysAgo = new Date();
+      fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+      fiveDaysAgo.setHours(0, 0, 0, 0); 
+
+      this.logger.log(`🔍 Buscando productos creados desde: ${fiveDaysAgo.toISOString()}`);
+
+      const products = await this.productModel.findAll({
+        where: {
+          createdAt: { [Op.gte]: fiveDaysAgo }, 
+          deletedAt: null, 
+        },
+        order: [['createdAt', 'DESC']], 
+        limit: 10, 
+        include: [
+          { model: PetType, as: 'petType', attributes: ['name'] },
+          { model: Category, as: 'category', attributes: ['name'] },
+          { model: Subcategory, as: 'subcategory', attributes: ['name'] },
+          { model: Size, as: 'size', attributes: ['name'] },
+        ],
+      });
+
+      this.logger.log(`Se encontraron ${products.length} productos recientes.`);
+
+      return products.map(product => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        publicationType: product.publicationType === '1' ? 'Producto' : 'Servicio',
+        petType: product.petType?.name || null,
+        category: product.category?.name || null,
+        subcategory: product.subcategory?.name || null,
+        size: product.size?.name || null,
+        weight: product.weight,
+        finalPrice: product.finalPrice,
+        stock: product.stock,
+        multimediaFiles: product.multimediaFiles,
+        createdAt: product.createdAt.toISOString(), 
+      }));
+    } catch (error) {
+      throw new HttpException(
+        `Error al obtener productos recientes: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async findTopSellingProductsAll(): Promise<any[]> {
+    try {
+      this.logger.log('Buscando los 10 productos más vendidos en toda la plataforma.');
+  
+      const products = await this.productModel.findAll({
+        where: { deletedAt: null },
+        order: [['soldQuantity', 'DESC']], 
+        limit: 10, 
+        include: [
+          { model: PetType, as: 'petType', attributes: ['name'] },
+          { model: Category, as: 'category', attributes: ['name'] },
+          { model: Subcategory, as: 'subcategory', attributes: ['name'] },
+          { model: Size, as: 'size', attributes: ['name'] },
+        ],
+      });
+  
+      this.logger.log(`✅ Se encontraron ${products.length} productos más vendidos.`);
+  
+      return products.map((product) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        publicationType: product.publicationType === '1' ? 'Producto' : 'Servicio',
+        petType: product.petType?.name || null,
+        category: product.category?.name || null,
+        subcategory: product.subcategory?.name || null,
+        size: product.size?.name || null,
+        weight: product.weight,
+        finalPrice: product.finalPrice,
+        stock: product.stock,
+        soldQuantity: product.soldQuantity, 
+        multimediaFiles: product.multimediaFiles.split(',').map((url) => url.trim()), 
+        createdAt: product.createdAt,
+      }));
+    } catch (error) {
+      this.logger.error(`❌ Error al obtener los productos más vendidos: ${error.message}`);
+      throw new HttpException(
+        `Error al obtener productos más vendidos: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+  
   
 }

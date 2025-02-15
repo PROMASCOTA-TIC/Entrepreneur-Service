@@ -270,4 +270,34 @@ async findTopSellingProducts(@Payload() entrepreneurId: string) {
   }
 }
 
+
+  @MessagePattern( 'get_recent_products_all' ) 
+async findRecentProducts() {
+  this.logger.log('Solicitud recibida para obtener productos recientes.');
+  try {
+    return await this.productsService.findRecentProductsAll();
+  } catch (error) {
+    this.logger.error(`Error al obtener productos recientes: ${error.message}`);
+    throw new HttpException(
+      `Error al obtener productos recientes: ${error.message}`,
+      HttpStatus.BAD_REQUEST
+    );
+  }
+}
+
+@MessagePattern('get_top_selling_products_all')
+async findTopSellingProductsAll() {
+  this.logger.log('Solicitud recibida para obtener los productos más vendidos globalmente.');
+  try {
+    return await this.productsService.findTopSellingProductsAll();
+  } catch (error) {
+    this.logger.error(`Error al obtener los productos más vendidos: ${error.message}`);
+    throw new HttpException(
+      `Error al obtener los productos más vendidos: ${error.message}`,
+      HttpStatus.BAD_REQUEST
+    );
+  }
+}
+
+
 }
